@@ -1,5 +1,6 @@
 - name: Build cEOS EVPN Symmetric IRB Fabric (eBGP Overlay and eBGP Underlay)
   hosts: DC1_FABRIC
+  gather_facts: false
   tasks:
     - name: Generate EOS configuration Snapshots
       tags: [snapshot]
