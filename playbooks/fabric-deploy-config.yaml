@@ -2,10 +2,10 @@
   hosts: DC1_FABRIC
   gather_facts: false
   tasks:
-    - name: Generate EOS configuration Snapshots
-      tags: [snapshot]
-      import_role:
-        name: arista.avd.eos_snapshot
+    # - name: Generate EOS configuration Snapshots
+    #   tags: [snapshot]
+    #   import_role:
+    #     name: arista.avd.eos_snapshot
 
     - name: Generate AVD Structured Configurations and Fabric Documentation
       import_role:
