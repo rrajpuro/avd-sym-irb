@@ -1,0 +1,9 @@
+---
+- name: Keep AAP execution environment running forever
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Sleep infinitely
+      ansible.builtin.command: sleep infinity
+      async: 0
+      poll: 0
