@@ -11,15 +11,14 @@
       import_role:
         name: arista.avd.eos_cli_config_gen
 
-    - delegate_to: localhost
-      run_once: true
-      set_fact:
-        intended_dir: "{{ inventory_dir }}"
+    - run_once: true
+      set_stats:
+        data:
+          intended_dir: "{{ inventory_dir }}"
 
 - hosts: localhost
   gather_facts: false
   tasks:
-
     - debug:
         msg: "{{ intended_dir }}"
 
