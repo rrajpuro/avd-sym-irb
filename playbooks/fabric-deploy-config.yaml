@@ -11,9 +11,7 @@
       import_role:
         name: arista.avd.eos_cli_config_gen
 
-    - delegate_to: localhost
-      run_once: true
-      set_stats:
+    - set_stats:
         data:
           intended_dir: "{{ inventory_dir }}"
 
