@@ -12,6 +12,8 @@
         name: arista.avd.eos_cli_config_gen
 
     - set_fact:
+      delegate_to: localhost
+      run_once: true
         intended_dir: "{{ inventory_dir }}"
 
 - hosts: localhost
