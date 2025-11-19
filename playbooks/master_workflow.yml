@@ -1,0 +1,113 @@
+---
+- name: Git workflow - clone, branch, modify, push
+  hosts: localhost
+  gather_facts: false
+  vars:
+    awx_bot_username: "awx_automation_bot"
+    awx_bot_email: "awx_automation_bot@noreply.discover.com"
+    github_token: #TODO: Probaby use a PAT from AAP credentials
+    # repo_url: "{{ awx_webhook_payload.ref }}" #TODO: Get repo url from webhook payload and inject here with PAT
+    repo_url: "https://{{ github_token | urlencode() }}@github.com/your_github_user/your_private_repo.git"
+
+  tasks:
+    - name: Main branch / Deploy workflow
+      when:
+        - awx_webhook_event_type | default('') == 'push'
+        - awx_webhook_payload.ref | default('') == 'refs/heads/main'
+        - awx_webhook_payload.head_commit.author.username | default('') != "{{ awx_bot_username }}"  #TODO: Update with AWX commiter bot username
+      block:
+        - name: Set variables specific to this workflow
+          ansible.builtin.set_fact:
+            commit_id_short: "{{ awx_webhook_payload.after[:7] }}"  #TODO: Find the correct variable for latest commit hash
+            repo_dir: "/tmp/avd_{{ commit_id_short }}"
+
+        - name: Clone the repo into tmp directory
+          ansible.builtin.git:
+            repo: "{{ repo_url }}"
+            dest: "{{ repo_dir }}"
+            version: main
+
+        - name: This playbook builds and deploys fabric configs
+          ansible.builtin.import_playbook: fabric-deploy-config.yaml #TODO: Update the playbook name
+          vars:
+            root_dir: "{{ repo_dir }}"
+
+        - name: Stage the modified files
+          command: git add .
+          args:
+            chdir: "{{ repo_dir }}"
+
+        - name: Configure git identity
+          command: git config user.email "{{ awx_bot_email }}"
+          args:
+            chdir: "{{ repo_path }}"
+
+        - name: Configure git identity
+          command: git config user.name "{{ awx_bot_username }}"
+          args:
+            chdir: "{{ repo_path }}"
+
+        - name: Commit the changes
+          command: "git commit -m 'Configurations and Documentation for commit {{ commit_id_short }}' "
+          args:
+            chdir: "{{ repo_dir }}"
+
+        - name: Push the updates
+          command: git push
+          args:
+            chdir: "{{ repo_dir }}"
+
+
+
+    - name: Feature branch / Validate workflow
+      when:
+        - awx_webhook_event_type | default('') == 'pull_request'
+        - awx_webhook_payload.action | default('') in ['opened', 'synchronized']
+      block:
+        - name: Set variables specific to this workflow
+          ansible.builtin.set_fact:
+            commit_id_short: "{{ awx_webhook_payload.pull_request.head.sha[:7] }}"  #TODO: Find the correct variable for latest commit hash
+            pull_request_number: "{{ awx_webhook_payload.pull_request.number }}"
+            repo_dir: "/tmp/avd_{{ commit_id_short }}"
+            new_branch: "automation/avd/{{ pull_request_number }}/{{ commit_id_short }}"
+
+        - name: Clone the repo into tmp directory checked out at the commit of pull_request
+          ansible.builtin.git:
+            repo: "{{ repo_url }}"
+            dest: "{{ repo_dir }}"
+            version: "refs/pull/{{ pull_request_number }}/head"
+
+        - name: Create a new branch from the commit
+          command: git checkout -b "{{ new_branch }}" "{{ commit_id_short }}"
+          args:
+            chdir: "{{ repo_dir }}"
+
+        - name: This playbook builds and validates fabric configs
+          ansible.builtin.import_playbook: fabric-deploy-config.yaml  #TODO: Update playbook to use the vaildation playbook
+          vars:
+            root_dir: "{{ repo_dir }}"
+
+        - name: Stage the modified files
+          command: git add .
+          args:
+            chdir: "{{ repo_dir }}"
+
+        - name: Configure git identity
+          command: git config user.email "{{ awx_bot_email }}"
+          args:
+            chdir: "{{ repo_path }}"
+
+        - name: Configure git identity
+          command: git config user.name "{{ awx_bot_username }}"
+          args:
+            chdir: "{{ repo_path }}"
+
+        - name: Commit the changes
+          command: "git commit -m 'Configurations and Documentation for commit {{ commit_id_short }}' "
+          args:
+            chdir: "{{ repo_dir }}"
+
+        - name: Push the updates
+          command: git push origin "{{ new_branch }}"
+          args:
+            chdir: "{{ repo_dir }}"

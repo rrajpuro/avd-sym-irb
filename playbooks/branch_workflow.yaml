@@ -1,0 +1,84 @@
+---
+- name: Initialisation of Git repo and variables
+  hosts: localhost
+  tasks:
+    - name: Set facts for all playbooks
+      set_fact:
+        base_branch: "{{ tower_job_scm_branch }}" # AAP injects this
+        commit_id_short: "{{ tower_project_revision[:7] }}" # SHA short version
+        new_branch: "automation/avd/{{ commit_id_short }}"
+        repo_path: "/tmp/avd-{{ commit_id_short }}"
+
+    - name: Ensure git user configuration is set
+      block:
+        - command: git config user.name "aap-automation"
+          args:
+            chdir: "{{ repo_path }}"
+
+        - command: git config user.email "aap-bot@example.com"
+          args:
+            chdir: "{{ repo_path }}"
+      rescue:
+        - debug:
+            msg: "Git config already set or failed—continuing"
+
+    - name: Clone the repository
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        version: "{{ commit_id_short }}"
+        force: yes
+        update: yes
+        # Need to use AAP credential type "Source Control" for authentication
+        accept_hostkey: yes
+
+    - name: Create automation branch
+      command: git checkout -B "{{ new_branch }}"
+      args:
+        chdir: "{{ repo_path }}"
+
+
+- name: Build cEOS EVPN Symmetric IRB Fabric (eBGP Overlay and eBGP Underlay)
+  hosts: DC1_FABRIC
+  gather_facts: false
+  vars:
+    base_branch: "{{ tower_job_scm_branch }}" # AAP injects this
+    commit_id_short: "{{ tower_project_revision[:7] }}" # SHA short version
+    new_branch: "automation/avd/{{ commit_id_short }}"
+    repo_path: "/tmp/avd-{{ commit_id_short }}"
+
+  tasks:
+    - name: Generate AVD Structured Configurations and Fabric Documentation
+      import_role:
+        name: arista.avd.eos_designs
+
+    - name: Generate Switch Intended Configurations and Documentation
+      import_role:
+        name: arista.avd.eos_cli_config_gen
+
+
+- name: Commit Configs and Documentation to automation/avd branch
+  hosts: localhost
+  tasks:
+    - name: Add all changed files
+      command: git add -A
+      args:
+        chdir: "{{ repo_path }}"
+
+    - name: Commit changes
+      command: git commit -m "Automation - Update configs and docs for PR {{ pr_number }} @ {{ commit_id_short }}"
+      args:
+        chdir: "{{ repo_path }}"
+      register: commit_result
+      failed_when: commit_result.rc not in [0,1]
+      # rc=1 means "nothing to commit"
+
+    - name: Push automation branch
+      command: git push -u origin "{{ new_branch }}"
+      args:
+        chdir: "{{ repo_path }}"
+
+    - name: Sleep infinitely
+      ansible.builtin.command: sleep infinity
+      async: 0
+      poll: 0
