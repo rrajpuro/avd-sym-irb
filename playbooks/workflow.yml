@@ -9,8 +9,9 @@
       #   - awx_webhook_payload.pull_request.base.ref | default('') in ['main']
       block:
         - name: Set validation workflow facts
-          # scm_branch: "{{ awx_webhook_payload.pull_request.head.ref }}"
-          scm_branch: "{{ git_branch }}"
+          set_fact:
+            # scm_branch: "{{ awx_webhook_payload.pull_request.head.ref }}"
+            scm_branch: "{{ git_branch }}"
 
     - name: Run vaildation job
       awx.awx.job_launch:
