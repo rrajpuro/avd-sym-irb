@@ -3,6 +3,9 @@
   hosts: localhost
   gather_facts: false
   tasks:
+    - name: Debug vars
+      debug:
+        msg: "{{ vars }}"
     - name: Sleep infinitely
       ansible.builtin.command: sleep infinity
       async: 0
