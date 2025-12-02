@@ -17,4 +17,7 @@
       awx.awx.job_launch:
         job_template: "AVD-sleep-infinitely"
         scm_branch: "{{ scm_branch }}"
+        controller_host: "https://10.88.161.61/"
         validate_certs: false
+        controller_username: "{{ lookup('ansible.builtin.credential', 'AWX-self-api-creds', field='username') }}"
+        controller_password: "{{ lookup('ansible.builtin.credential', 'AWX-self-api-creds', field='password') }}"
